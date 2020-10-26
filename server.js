@@ -5,14 +5,18 @@ let superagent = require('superagent');
 
 app.use(cors());
 require('dotenv').config();
+const PORT = process.env.PORT;
+const GEOCODE_API_KEY = process.env.GEOCODE_API_KEY;
+const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
+const TRAIL_API_KEY = process.env.TRAIL_API_KEY;
 
 app.get('/location', handelLocation);
 function handelLocation(req, res) {
 
 
   let city = req.query.city;
-  let key = process.env.GEOCODE_API_KEY;
-  superagent.get(`https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`)
+ 
+  superagent.get(`https://eu1.locationiq.com/v1/search.php?key=${GEOCODE_API_KEY}&q=${city}&format=json`)
     .then((data) => {
       let jasonobject = data.body[0];
 
@@ -46,11 +50,11 @@ function handelweather(req, res) {
 
   // let jasondata = require('./data/weather.json');
   let city = req.query.search_query;
-  let key = process.env.WEATHER_API_KEY;
+  
   //   let lat =req.query.jasonobject.lat;
   //   let lon =req.query.jasonobject.lon;
 
-  superagent.get(`https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}
+  superagent.get(`https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${WEATHER_API_KEY}
     `).then((val) => {
     let jasonobject = val.body.data;
 
@@ -98,11 +102,11 @@ function handeltrails(req, res) {
 
 
 
-  let key = process.env.TRAIL_API_KEY;
+  
   //   let lat =req.query.jasonobject.lat;
   //   let lon =req.query.jasonobject.lon;
 
-  superagent.get(`https://www.hikingproject.com/data/get-trails?lat=${req.query.latitude}&lon=${req.query.longitude}&maxDistance=200&key=${key}
+  superagent.get(`https://www.hikingproject.com/data/get-trails?lat=${req.query.latitude}&lon=${req.query.longitude}&maxDistance=200&key=${TRAIL_API_KEY}
  
     `).then((val) => {
     let jasonobject = val.body.trails;
@@ -142,7 +146,7 @@ function Trail(traildata) {
 //     "condition_time": "0:00:00 "
 //   },
 //   {
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-  console.log('this is the listen ');
-});
+    
+    app.listen(PORT, () => {
+      console.log('this is the listen ');
+    });
