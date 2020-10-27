@@ -5,6 +5,7 @@ let superagent = require('superagent');
 
 app.use(cors());
 require('dotenv').config();
+
 const PORT = process.env.PORT;
 const GEOCODE_API_KEY = process.env.GEOCODE_API_KEY;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
