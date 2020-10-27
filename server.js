@@ -1,6 +1,7 @@
 let express = require('express');
 let app = express();
 let cors = require('cors');
+let pg = require('pg');
 let superagent = require('superagent');
 
 app.use(cors());
@@ -10,21 +11,49 @@ const GEOCODE_API_KEY = process.env.GEOCODE_API_KEY;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const TRAIL_API_KEY = process.env.TRAIL_API_KEY;
 
+
+
+const DATABASE_URL = process.env.DATABASE_URL;
+
+
 app.get('/location', handelLocation);
 function handelLocation(req, res) {
 
-
   let city = req.query.city;
- 
-  superagent.get(`https://eu1.locationiq.com/v1/search.php?key=${GEOCODE_API_KEY}&q=${city}&format=json`)
-    .then((data) => {
-      let jasonobject = data.body[0];
 
-      let newlocation = new Location(city, jasonobject.display_name, jasonobject.lat, jasonobject.lon);
-      res.status(200).json(newlocation);
-    }).catch(() => {
-      res.status(500).send('Sorry, something went wrong');
-    });
+  let database = 'SELECT search_query, formatted_query,latitude,longitude FROM city WHERE search_query = $1 ';
+  let val = [city];
+  client.query(database, val).then((data) => {
+    if (data.rowCount !== 0) {
+      res.send(data.rows[0]);
+      console.log(data.rows);
+    } else {
+
+      superagent.get(`https://eu1.locationiq.com/v1/search.php?key=${GEOCODE_API_KEY}&q=${city}&format=json`)
+        .then((data) => {
+          let jasonobject = data.body[0];
+
+          let newlocation = new Location(city, jasonobject.display_name, jasonobject.lat, jasonobject.lon);
+          res.status(200).json(newlocation);
+         client.query(`INSERT INTO city (search_query,formatted_query, latitude, longitude) VALUES ('${newlocation.search_query}','${newlocation.formatted_query}','${newlocation.latitude}','${newlocation.longitude}')`).then();
+   
+        }).catch(() => {
+
+          res.status(500).send('Sorry, something went wrong');
+        });
+    }
+
+
+  });
+  // if (city === 'SELECT * FROM city;'){
+  // client.query('SELECT * FROM city;').then(data => {
+  //   res.send(data.row);
+
+  // }).catch(()=>{
+  //   res.send('try again ');
+  // });
+
+
   // let jasondata = require('./data/location.json');
 
 
@@ -50,7 +79,7 @@ function handelweather(req, res) {
 
   // let jasondata = require('./data/weather.json');
   let city = req.query.search_query;
-  
+
   //   let lat =req.query.jasonobject.lat;
   //   let lon =req.query.jasonobject.lon;
 
@@ -62,7 +91,7 @@ function handelweather(req, res) {
       return new Weather(value.weather.description, value.datetime);
 
     });
-    console.log(arr);
+    // console.log(arr);
     res.status(200).send(arr);
   }).catch(() => {
     res.status(500).send('Sorry, something went wrong');
@@ -78,6 +107,8 @@ function handelweather(req, res) {
   //   arr.push(newWeather);
 
   // }
+
+
 
 }
 function Weather(forecast, time) {
@@ -96,13 +127,24 @@ function Weather(forecast, time) {
 //     },
 //     ...
 //   ]
+
+
+let client = new pg.Client(DATABASE_URL);
+client.connect().then(() => {
+  app.listen(PORT, () => {
+    console.log('this is the listen ');
+  });
+}).catch(err => {
+  console.log('sorry there is a problem ', err);
+});
+
 app.get('/trails', handeltrails);
 function handeltrails(req, res) {
 
 
 
 
-  
+
   //   let lat =req.query.jasonobject.lat;
   //   let lon =req.query.jasonobject.lon;
 
@@ -115,7 +157,7 @@ function handeltrails(req, res) {
       return new Trail(value);
 
     });
-    console.log(arr);
+    // console.log(arr);
     res.status(200).send(arr);
   }).catch(() => {
     res.status(500).send('Sorry, something went wrong');
@@ -130,8 +172,8 @@ function Trail(traildata) {
   this.summary = traildata.summary;
   this.trails_url = traildata.url;
   this.conditions = traildata.conditionStatus;
-  this.condition_date = traildata.conditionDate.toString().slice(0,10);
-  this.condition_time = traildata.conditionDate.toString().slice(11,20);
+  this.condition_date = traildata.conditionDate.toString().slice(0, 10);
+  this.condition_time = traildata.conditionDate.toString().slice(11, 20);
 }
 //   {
 //     "name": "Rattlesnake Ledge",
@@ -146,7 +188,4 @@ function Trail(traildata) {
 //     "condition_time": "0:00:00 "
 //   },
 //   {
-    
-    app.listen(PORT, () => {
-      console.log('this is the listen ');
-    });
+
