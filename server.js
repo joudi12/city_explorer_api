@@ -10,8 +10,8 @@ const PORT = process.env.PORT;
 const GEOCODE_API_KEY = process.env.GEOCODE_API_KEY;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const TRAIL_API_KEY = process.env.TRAIL_API_KEY;
-
-
+const MOVIE_API_KEY = process.env.MOVIE_API_KEY;
+const YELP_API_KEY = process.env.YELP_API_KEY;
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
@@ -26,7 +26,7 @@ function handelLocation(req, res) {
   client.query(database, val).then((data) => {
     if (data.rowCount !== 0) {
       res.send(data.rows[0]);
-      console.log(data.rows);
+      // console.log(data.rows);
     } else {
 
       superagent.get(`https://eu1.locationiq.com/v1/search.php?key=${GEOCODE_API_KEY}&q=${city}&format=json`)
@@ -35,8 +35,8 @@ function handelLocation(req, res) {
 
           let newlocation = new Location(city, jasonobject.display_name, jasonobject.lat, jasonobject.lon);
           res.status(200).json(newlocation);
-         client.query(`INSERT INTO city (search_query,formatted_query, latitude, longitude) VALUES ('${newlocation.search_query}','${newlocation.formatted_query}','${newlocation.latitude}','${newlocation.longitude}')`).then();
-   
+          client.query(`INSERT INTO city (search_query,formatted_query, latitude, longitude) VALUES ('${newlocation.search_query}','${newlocation.formatted_query}','${newlocation.latitude}','${newlocation.longitude}')`).then();
+
         }).catch(() => {
 
           res.status(500).send('Sorry, something went wrong');
@@ -116,17 +116,6 @@ function Weather(forecast, time) {
   this.time = new Date(time).toDateString();
 }
 
-// [
-//     {
-//       "forecast": "Partly cloudy until afternoon.",
-//       "time": "Mon Jan 01 2001"
-//     },
-//     {
-//       "forecast": "Mostly cloudy in the morning.",
-//       "time": "Tue Jan 02 2001"
-//     },
-//     ...
-//   ]
 
 
 let client = new pg.Client(DATABASE_URL);
@@ -140,19 +129,11 @@ client.connect().then(() => {
 
 app.get('/trails', handeltrails);
 function handeltrails(req, res) {
-
-
-
-
-
-  //   let lat =req.query.jasonobject.lat;
-  //   let lon =req.query.jasonobject.lon;
-
   superagent.get(`https://www.hikingproject.com/data/get-trails?lat=${req.query.latitude}&lon=${req.query.longitude}&maxDistance=200&key=${TRAIL_API_KEY}
  
     `).then((val) => {
     let jasonobject = val.body.trails;
-    console.log(jasonobject);
+    // console.log(jasonobject);
     let arr = jasonobject.map((value) => {
       return new Trail(value);
 
@@ -175,17 +156,79 @@ function Trail(traildata) {
   this.condition_date = traildata.conditionDate.toString().slice(0, 10);
   this.condition_time = traildata.conditionDate.toString().slice(11, 20);
 }
-//   {
-//     "name": "Rattlesnake Ledge",
-//     "location": "Riverbend, Washington",
-//     "length": "4.3",
-//     "stars": "4.4",
-//     "star_votes": "84",
-//     "summary": "An extremely popular out-and-back hike to the viewpoint on Rattlesnake Ledge.",
-//     "trail_url": "https://www.hikingproject.com/trail/7021679/rattlesnake-ledge",
-//     "conditions": "Dry: The trail is clearly marked and well maintained.",
-//     "condition_date": "2018-07-21",
-//     "condition_time": "0:00:00 "
-//   },
-//   {
 
+app.get('/movies', handelmovies);
+function handelmovies(req, res) {
+
+  superagent.get(`https://api.themoviedb.org/3/search/movie?api_key=${MOVIE_API_KEY}&query=${req.query.search_query}
+  `).then((val) => {
+    let jasonobject = val.body.results;
+    // console.log(jasonobject);
+
+    let arr = jasonobject.map((value) => {
+
+      return new Movies(value);
+
+    });
+    // console.log('this is the arr', arr);
+    res.status(200).send(arr);
+
+  }).catch(() => {
+    res.status(500).send('Sorry, something went wrong');
+  });
+}
+
+function Movies(moviedata) {
+  this.title = moviedata.title;
+  this.overview = moviedata.overview;
+  this.average_votes = moviedata.vote_average;
+  this.total_votes = moviedata.vote_count;
+  this.image_url = `https://image.tmdb.org/t/p/w500/${moviedata.poster_path}`;
+  this.popularity = moviedata.popularity;
+  this.released_on = moviedata.release_date;
+}
+
+
+app.get('/yelp', handelyelp);
+let page = 1;
+function handelyelp(req, res) {
+  
+  console.log(page);
+  const numPerPage = 4;
+
+  const start = ((page - 1) * numPerPage + 1);
+ page+=1;
+
+  const queryParams = {
+    location: req.query.search_query,
+    limit: numPerPage,
+    offset: start,
+  };
+
+  superagent.get('https://api.yelp.com/v3/businesses/search')
+    .query(queryParams)
+    .set('Authorization', `Bearer ${YELP_API_KEY}`)
+    .then((val) => {
+      let jasonobject = val.body.businesses;
+      // console.log(jasonobject);
+
+      let arr = jasonobject.map((value) => {
+
+        return new Rusturant(value);
+
+      });
+      // console.log('this is the arr', arr);
+      res.status(200).send(arr);
+
+    }).catch((err) => {
+      res.status(500).send(err);
+    });
+}
+
+function Rusturant(rusdata) {
+  this.name = rusdata.name;
+  this.image_url = rusdata.image_url;
+  this.price = rusdata.price;
+  this.rating = rusdata.rating;
+  this.url = rusdata.url;
+}
